@@ -44,6 +44,15 @@ def load_and_prepare_data(data_file):
     df.drop(columns=[26, 27], inplace=True) # Elimina columnas vacías extra
     df.columns = columns
 
+    # --- OPTIMIZACIÓN DE MEMORIA ---
+    # Convierte todas las columnas numéricas a float16 para ahorrar memoria
+    for col in df.columns:
+        if df[col].dtype == 'float64':
+            df[col] = df[col].astype('float16')
+        if df[col].dtype == 'int64':
+            df[col] = df[col].astype('int16')
+    # --- FIN DE LA OPTIMIZACIÓN ---
+    
     # Calcula el RUL para los datos
     # Asume que los datos contienen trayectorias completas hasta el fallo.
     max_cycles = df.groupby('unit_number')['time_in_cycles'].max().reset_index()
@@ -78,7 +87,7 @@ def train_gpr_model(X_train, y_train):
     """
     print("Iniciando selección y entrenamiento del modelo GPR...")
 
-    # Define los kernels candidatos basados en opciones comunes como Exponencial Cuadrado (RBF) y Matérn
+    # Define el kernel como Exponencial Cuadrado (RBF)
     kernels = {
         "RBF": RBF() + WhiteKernel(),
     }
@@ -171,19 +180,36 @@ if __name__ == '__main__':
     try:
         # 1. Cargar datos
         print(f"Cargando datos de entrenamiento desde '{TRAIN_FILE}'...")
-        X_train_raw, y_train = load_and_prepare_data(TRAIN_FILE)
+        X_train_raw, y_train_raw = load_and_prepare_data(TRAIN_FILE)
         
+        # Reduce el conjunto de entrenamiento para ahorrar memoria.
+        # Usa solo el 20% de los datos (puedes ajustar este valor).
+        # Usamos train_test_split para obtener una muestra estratificada si es necesario,
+        # o simplemente el método .sample() de pandas.
+        print(f"Tamaño original de entrenamiento: {len(X_train_raw)} muestras.")
+        
+        # Define el tamaño de la muestra (ej. 5000 muestras)
+        n_samples = 5000 
+        if len(X_train_raw) > n_samples:
+            X_train_sampled, _, y_train_sampled, _ = train_test_split(
+                X_train_raw, y_train_raw, train_size=n_samples, random_state=42
+            )
+        else:
+            X_train_sampled, y_train_sampled = X_train_raw, y_train_raw
+
+        print(f"Usando un subconjunto de {len(X_train_sampled)} muestras para entrenar.")
+
         print(f"Cargando datos de validación desde '{VALIDATION_FILE}'...")
         X_val_raw, y_val = load_and_prepare_data(VALIDATION_FILE)
 
         # 2. Normalizar los datos
         # Se ajusta con los datos de entrenamiento y se transforman ambos conjuntos (entrenamiento y validación)
         scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train_raw)
+        X_train = scaler.fit_transform(X_train_sampled)
         X_val = scaler.transform(X_val_raw)
 
         # 3. Entrenar el modelo
-        gpr_model = train_gpr_model(X_train, y_train)
+        gpr_model = train_gpr_model(X_train, y_train_sampled)
 
         # 4. Evaluar el modelo en el conjunto de validación
         y_pred, y_std, rmse, mape = evaluate_model(gpr_model, X_val, y_val)
