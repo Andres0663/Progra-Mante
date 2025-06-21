@@ -48,9 +48,9 @@ def load_and_prepare_data(data_file):
     # Convierte todas las columnas numéricas a float16 para ahorrar memoria
     for col in df.columns:
         if df[col].dtype == 'float64':
-            df[col] = df[col].astype('float16')
+            df[col] = df[col].astype('float32')
         if df[col].dtype == 'int64':
-            df[col] = df[col].astype('int16')
+            df[col] = df[col].astype('int32')
     # --- FIN DE LA OPTIMIZACIÓN ---
     
     # Calcula el RUL para los datos
@@ -89,7 +89,7 @@ def train_gpr_model(X_train, y_train):
 
     # Define el kernel como Exponencial Cuadrado (RBF)
     kernels = {
-        "RBF": RBF() + WhiteKernel(),
+        "RBF": RBF(length_scale_bounds=(1e-1, 1e7)) + WhiteKernel(),
     }
 
     best_score = float('inf')
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         print(f"Tamaño original de entrenamiento: {len(X_train_raw)} muestras.")
         
         # Define el tamaño de la muestra (ej. 5000 muestras)
-        n_samples = 5000 
+        n_samples = 8000 
         if len(X_train_raw) > n_samples:
             X_train_sampled, _, y_train_sampled, _ = train_test_split(
                 X_train_raw, y_train_raw, train_size=n_samples, random_state=42
