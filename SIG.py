@@ -71,7 +71,6 @@ def load_and_prepare_data(data_file):
     return X, y
 
 # --- 2. Selección y Entrenamiento del Modelo ---
-def train_gpr_model(X_train, y_train):
     """
     Selecciona el mejor kernel para GPR y entrena el modelo.
     La metodología implica seleccionar la mejor combinación de funciones de media y
@@ -85,11 +84,13 @@ def train_gpr_model(X_train, y_train):
     Returns:
         GaussianProcessRegressor: El modelo GPR entrenado.
     """
+def train_gpr_model(X_train, y_train):
+
     print("Iniciando selección y entrenamiento del modelo GPR...")
 
     # Define el kernel como Exponencial Cuadrado (RBF)
     kernels = {
-        "RBF": RBF(length_scale_bounds=(1e-1, 1e7)) + WhiteKernel(),
+        "RBF": RBF(length_scale_bounds=(1e7, 1e8)) + WhiteKernel(),
     }
 
     best_score = float('inf')
@@ -107,8 +108,7 @@ def train_gpr_model(X_train, y_train):
     print("Entrenamiento del modelo completado.")
     return final_gpr
 
-# --- 3. Evaluación ---
-def evaluate_model(model, X_val, y_val):
+
     """
     Evalúa el modelo en un conjunto de validación usando las métricas RMSE y MAPE.
 
@@ -120,6 +120,9 @@ def evaluate_model(model, X_val, y_val):
     Returns:
         tuple: Una tupla que contiene (y_pred, y_std, rmse, mape).
     """
+# --- 3. Evaluación ---
+def evaluate_model(model, X_val, y_val):
+
     # GPR proporciona una predicción y su incertidumbre (desviación estándar)
     y_pred, y_std = model.predict(X_val, return_std=True)
 
@@ -182,13 +185,11 @@ if __name__ == '__main__':
         print(f"Cargando datos de entrenamiento desde '{TRAIN_FILE}'...")
         X_train_raw, y_train_raw = load_and_prepare_data(TRAIN_FILE)
         
-        # Reduce el conjunto de entrenamiento para ahorrar memoria.
-        # Usa solo el 20% de los datos (puedes ajustar este valor).
         # Usamos train_test_split para obtener una muestra estratificada si es necesario,
         # o simplemente el método .sample() de pandas.
         print(f"Tamaño original de entrenamiento: {len(X_train_raw)} muestras.")
         
-        # Define el tamaño de la muestra (ej. 5000 muestras)
+        # Define el tamaño de la muestra (ej. 8000 muestras)
         n_samples = 8000 
         if len(X_train_raw) > n_samples:
             X_train_sampled, _, y_train_sampled, _ = train_test_split(
